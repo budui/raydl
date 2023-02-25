@@ -1,7 +1,8 @@
 import importlib
 import inspect
+from collections.abc import MutableMapping
 from copy import deepcopy
-from typing import MutableMapping, Optional, Union
+from typing import Any, Optional, Union
 
 __all__ = ["initialize", "import_object"]
 
@@ -31,7 +32,7 @@ def import_object(object_path: str, reload_module=False):
     return cls
 
 
-def _initialize(obj_type, arguments):
+def _initialize(obj_type, arguments, initialize_classmethod: Optional[str] = None) -> Any:
     if isinstance(obj_type, str):
         obj_cls = import_object(obj_type)
     elif inspect.isclass(obj_type):
@@ -40,7 +41,11 @@ def _initialize(obj_type, arguments):
         raise TypeError(f"`obj_type` must be a class name of valid class, " f"but got {type(obj_type)}")
 
     try:
-        obj = obj_cls(**arguments)
+        if initialize_classmethod is None:
+            obj = obj_cls(**arguments)
+        else:
+            init_method = getattr(obj_cls, initialize_classmethod)
+            obj = init_method(**arguments)
     except Exception as e:
         raise TypeError(f"Invalid arguments in {arguments} while " f"building class {obj_cls}") from e
 
@@ -50,7 +55,8 @@ def _initialize(obj_type, arguments):
 def initialize(
     config: Union[str, MutableMapping],
     default_arguments: Optional[MutableMapping] = None,
-):
+    initialize_classmethod: Optional[str] = None,
+) -> Any:
     """
     initialize a class instance with `config`.
 
@@ -101,4 +107,4 @@ def initialize(
         for k, v in default_arguments.items():
             arguments.setdefault(k, v)
 
-    return _initialize(obj_type, arguments)
+    return _initialize(obj_type, arguments, initialize_classmethod)

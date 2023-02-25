@@ -1,6 +1,7 @@
+from collections.abc import Callable
 from contextlib import contextmanager
 from time import perf_counter
-from typing import Any, Callable, Optional
+from typing import Any, Optional
 
 __all__ = ["Timer", "running_timer"]
 
