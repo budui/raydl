@@ -3,7 +3,7 @@ name = "raydl"
 version = "0.0.2"
 description = "The library of utilities to help you deal with the deep learning in PyTorch."
 readme = "README.md"
-authors = [{ name = "Ray Wang", email = "jinxiapu@gmail.com" }]
+authors = [{ name = "Ray Wang" }]
 license = { file = "LICENSE" }
 classifiers = [
     "License :: OSI Approved :: MIT License",
