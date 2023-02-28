@@ -309,24 +309,24 @@ class DataclassSFDB(_Database):
             try:
                 self._iterating = True
                 for item in self._sqlite.execute(f"SELECT ID, {self.fields()} FROM DATA"):
-                    yield item[0], self.schema(*item[1:])
+                    yield item[0], self._dataclass_from(*item[1:])
             finally:
                 self._iterating = False
 
-    def todict(self):
+    def todict(self, __CONDITION=""):
         self._sanity_check()
         with self._lock:
             return {
                 x[0]: self._dataclass_from(*x[1:])
-                for x in self._sqlite.execute(f"SELECT ID, {self.fields()} FROM DATA").fetchall()
+                for x in self._sqlite.execute(f"SELECT ID, {self.fields()} FROM DATA {__CONDITION}").fetchall()
             }
 
-    def tolist(self):
+    def tolist(self, __CONDITION=""):
         self._sanity_check()
         with self._lock:
             return [
                 (x[0], self._dataclass_from(*x[1:]))
-                for x in self._sqlite.execute(f"SELECT ID, {self.fields()} FROM DATA").fetchall()
+                for x in self._sqlite.execute(f"SELECT ID, {self.fields()} FROM DATA ").fetchall()
             ]
 
 
