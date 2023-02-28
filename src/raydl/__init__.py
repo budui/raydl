@@ -5,4 +5,4 @@ from .tensor import slerp
 from .time import Timer, running_timer
 from .utils import manual_seed
 
-__version__ = "0.0.3"
+__version__ = "0.0.4"
