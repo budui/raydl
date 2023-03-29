@@ -3,7 +3,7 @@ import random
 
 import torch
 
-__all__ = ["manual_seed"]
+__all__ = ["manual_seed", "classname"]
 
 
 def manual_seed(seed: int) -> None:
@@ -18,3 +18,14 @@ def manual_seed(seed: int) -> None:
         import numpy as np
 
         np.random.seed(seed)
+
+
+def classname(o):
+    """
+    returns the class name of an object
+    """
+    klass = o.__class__
+    module = klass.__module__
+    if module == "builtins":
+        return klass.__qualname__  # avoid outputs like 'builtins.str'
+    return module + "." + klass.__qualname__

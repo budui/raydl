@@ -15,7 +15,9 @@ def import_object(object_path: str, reload_module=False):
     Example: `"functools.lru_cache"`, `"torchvision.transforms.Resize"`
     """
 
-    assert "." in object_path
+    assert (
+        "." in object_path
+    ), f"`object_path` need to be the composition of module and class_name, but got {object_path}"
     module, class_name = object_path.rsplit(".", 1)
 
     try:
