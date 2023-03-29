@@ -1,6 +1,6 @@
 [project]
 name = "raydl"
-version = "0.0.4"
+version = "0.0.5"
 description = "The library of utilities to help you deal with the deep learning in PyTorch."
 readme = "README.md"
 authors = [{ name = "Ray Wang" }]
@@ -55,7 +55,7 @@ line-length=119
 "__init__.py" = ["F401"]
 
 [tool.bumpver]
-current_version = "0.0.4"
+current_version = "0.0.5"
 version_pattern = "MAJOR.MINOR.PATCH"
 commit_message = "bump version {old_version} -> {new_version}"
 commit = true
