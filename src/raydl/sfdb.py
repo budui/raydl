@@ -12,6 +12,8 @@ from typing import Any, Optional, Union, cast
 import numpy as np
 import PIL.Image
 
+import raydl
+
 
 class TypeMapper:
     def __init__(self, sqlite3_type: str, py_type: Union[object, type]) -> None:
@@ -115,7 +117,7 @@ class _Database:
     def __init__(self, filename, init_sql):
         self._filename = filename
         self._sqlite: sqlite3.Connection = sqlite3.connect(self._filename, check_same_thread=False)
-        self._sqlite.execute(init_sql)
+        self._sqlite.executescript(init_sql)
         self._sqlite.commit()
         self._lock = threading.Lock()
         self._iterating = False
@@ -228,12 +230,29 @@ class DataclassSFDB(_Database):
         self._fields = self._schema_dataclass_to_fields(schema_dataclass)
 
         init_sql = (
-            "CREATE TABLE IF NOT EXISTS DATA( ID TEXT NOT NULL UNIQUE, {}, "
-            "last_update TIMESTAMP DEFAULT (datetime('now','localtime')) NOT NULL, PRIMARY KEY (ID))"
+            "CREATE TABLE IF NOT EXISTS data( id TEXT NOT NULL UNIQUE, {}, "
+            "last_update TIMESTAMP DEFAULT (datetime('now','localtime')) NOT NULL, PRIMARY KEY (ID));"
         )
         init_sql = init_sql.format(", ".join(f"{name} {_t} NOT NULL" for name, _t in self._fields.items()))
+        init_sql += (
+            "CREATE TABLE IF NOT EXISTS meta( key TEXT NOT NULL UNIQUE, value TEXT NOT NULL, PRIMARY KEY (key));"
+        )
 
         super().__init__(filename, init_sql)
+        self._meta_to_bytes()
+
+    def _meta_to_bytes(self):
+        init_kwargs = dict()
+        for key, m in self.type_mappers.items():
+            init_kwargs[key] = dict(_type=raydl.full_class_name(m))
+        init_kwargs = json.dumps(init_kwargs)
+
+        with self._lock:
+            self._sqlite.execute(
+                "INSERT OR REPLACE INTO meta(key, value) VALUES(?, ?)",
+                ("type_mappers", init_kwargs),
+            )
+        self.commit()
 
     def _schema_dataclass_to_fields(self, schema_dataclass):
         assert dataclasses.is_dataclass(
@@ -352,3 +371,53 @@ class KVSFDB(DataclassSFDB):
 class JsonSFDB(KVSFDB):
     def __init__(self, filename: str):
         super().__init__(filename, JSONTypeMapper())
+
+
+def _create_db_in_the_fly(db_path, schema, type_mappers) -> Union[DataclassSFDB, KVSFDB, JsonSFDB]:
+    default_type = dict(INTEGER=int, TEXT=str, REAL=float, BLOB=bytes)
+
+    dataclass_schema = []
+    for _, name, db_type, _, _, _ in schema:
+        if name not in ["id", "last_update"]:
+            mapper = type_mappers.get(name, None)
+            assert mapper is None or isinstance(mapper, TypeMapper)
+            dataclass_schema.append((name, mapper.py_type if mapper is not None else default_type[db_type]))
+
+    inferred_dataclass = dataclasses.make_dataclass("InferredDataclass", dataclass_schema)
+
+    fields = dataclasses.fields(inferred_dataclass)
+    if len(fields) == 1 and fields[0].name == "value":
+        if isinstance(type_mappers.get("value", None), JSONTypeMapper):
+            return JsonSFDB(db_path)
+        return KVSFDB(filename=db_path, value_type=type_mappers.get("value", None) or fields[0].type)
+    return DataclassSFDB(db_path, inferred_dataclass, type_mappers)
+
+
+def from_sqlite3(db_path, smart=True) -> Union[DataclassSFDB, KVSFDB, JsonSFDB]:
+    connect = sqlite3.connect(db_path)
+    cursor = connect.cursor()
+    tables = cursor.execute("SELECT name FROM sqlite_master WHERE type='table';").fetchall()
+
+    if ("data",) not in tables:
+        raise ValueError("invalid sqlite3 db file: not found table 'data'")
+
+    schema = cursor.execute("PRAGMA table_info('data')").fetchall()
+    has_id = False
+    has_last_update = False
+    for _, *row in schema:
+        if row == ["id", "TEXT", 1, None, 1]:
+            has_id = True
+        if row == ["last_update", "TIMESTAMP", 1, "datetime('now','localtime')", 0]:
+            has_last_update = True
+    if not (has_id and has_last_update):
+        raise ValueError(f"invalid sqlite3 db file: invalid table 'data' schema: {schema}")
+
+    type_mappers = dict()
+    if smart and ("meta",) in tables:
+        init_kwargs = cursor.execute("SELECT value FROM meta WHERE key='type_mappers'").fetchone()[0]
+        type_mappers = json.loads(init_kwargs)
+        for key in type_mappers:
+            type_mappers[key] = raydl.initialize(type_mappers[key])
+
+    connect.close()
+    return _create_db_in_the_fly(db_path, schema, type_mappers)
