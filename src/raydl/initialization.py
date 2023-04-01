@@ -4,7 +4,14 @@ from collections.abc import MutableMapping
 from copy import deepcopy
 from typing import Any, Optional, Union
 
-__all__ = ["initialize", "import_object"]
+__all__ = ["initialize", "import_object", "full_class_name"]
+
+
+def full_class_name(obj) -> str:
+    cls = obj if isinstance(obj, type) else obj.__class__
+    if cls.__module__ == "builtins":
+        return cls.__qualname__
+    return cls.__module__ + "." + cls.__qualname__
 
 
 def import_object(object_path: str, reload_module=False):

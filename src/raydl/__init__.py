@@ -7,7 +7,7 @@ from .image import (
     save_images,
     to_pil_images,
 )
-from .initialization import import_object, initialize
+from .initialization import full_class_name, import_object, initialize
 from .sfdb import KVSFDB, DataclassSFDB, JsonSFDB
 from .tensor import grid_transpose, slerp
 from .time import Timer, running_timer
