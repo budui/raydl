@@ -4,6 +4,7 @@ import warnings
 from pathlib import Path
 from typing import Iterable, Optional, Sequence, Union, cast
 
+import numpy as np
 import torch
 import torch.nn.functional as F
 import torchvision.transforms.functional
@@ -268,3 +269,46 @@ def save_images(
 
     for i in range(len(pil_images)):
         pil_images[i].save(save_path[i])
+
+
+def create_heatmap(
+    images: torch.Tensor,
+    range_min: Union[float, torch.Tensor, None] = None,
+    range_max: Union[float, torch.Tensor, None] = None,
+    scale_each: bool = False,
+    color_map: str = "jet",
+) -> torch.Tensor:
+    """
+    create heatmap from BxHxW tensor.
+    :param images: Tensor[BxHxW]
+    :param range_min: max value used to normalize the image. By default, min and max are computed from the tensor.
+    :param range_max: min value used to normalize the image. By default, min and max are computed from the tensor.
+    :param scale_each: If True, scale each image in the batch of images separately rather
+     than the (min, max) over all images. Default: False.
+    :param color_map: The colormap to apply, colormap from
+     https://docs.opencv.org/3.4/d3/d50/group__imgproc__colormap.html#ga9a805d8262bcbe273f16be9ea2055a65
+    :param return_tensor: if True, return Tensor[Bx3xHxW], otherwise return tuple of numpy.array(0-255)
+    :return:
+    """
+    device = images.device
+    assert images.dim() == 3
+    try:
+        import cv2
+
+        color_map = getattr(cv2, f"COLORMAP_{color_map.upper()}")
+    except AttributeError as e:
+        raise ValueError(f"invalid color_map {color_map}") from e
+
+    with torch.no_grad():
+        images = images.detach().clone().to(dtype=torch.float32, device=torch.device("cpu"))
+        if range_min is None:
+            range_min = images.amin(dim=[-1, -2], keepdim=True) if scale_each else images.amin()
+        if range_max is None:
+            range_max = images.amax(dim=[-1, -2], keepdim=True) if scale_each else images.amax()
+        heatmaps = []
+        for m in images.add_(-range_min).div_(range_max - range_min + 1e-5).clip_(0.0, 1.0):
+            heatmaps.append(cv2.applyColorMap(np.uint8(m.numpy() * 255), color_map))
+        heatmaps = torch.from_numpy(np.stack(heatmaps)).permute(0, 3, 1, 2)
+        # BGR -> RGB & [0, 255] -> [0, 1]
+        heatmaps = heatmaps[:, [2, 1, 0], :, :].contiguous().float().to(device) / 255
+        return heatmaps
