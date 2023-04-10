@@ -1,6 +1,7 @@
 from .collect_env import collect_env
 from .image import (
     captioning_pil_image,
+    create_heatmap,
     load_images,
     pil_loader,
     resize_images,
