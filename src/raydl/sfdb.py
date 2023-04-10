@@ -173,7 +173,7 @@ class _Database:
         return
 
     def close(self):
-        if self._sqlite is None:
+        if self._sqlite is None or self._is_close:
             return
         self._sanity_check()
         self.commit()
