@@ -79,7 +79,7 @@ class PILImageTypeMapper(TypeMapper):
     @staticmethod
     def serialize(obj: PIL.Image.Image):
         buff = BytesIO()
-        obj.save(buff, format="webp")
+        obj.save(buff, format="webp", lossless=True)
         return buff.getvalue()
 
     @staticmethod
