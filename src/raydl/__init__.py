@@ -14,4 +14,4 @@ from .tensor import grid_transpose, slerp
 from .time import Timer, running_timer
 from .utils import classname, manual_seed
 
-__version__ = "0.0.7"
+__version__ = "0.0.8"
