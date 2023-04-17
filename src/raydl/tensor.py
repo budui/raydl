@@ -1,4 +1,5 @@
-from typing import Iterable, Optional, Union
+import collections.abc as collections
+from typing import Any, Callable, Iterable, Optional, Union, cast
 
 import torch
 from torch import FloatTensor, Size, Tensor, lerp, zeros_like
@@ -120,3 +121,57 @@ def slerp(v0: FloatTensor, v1: FloatTensor, t: Union[float, FloatTensor], DOT_TH
         return out.masked_scatter_(can_slerp.unsqueeze(-1).expand(*t_batch_dims, *can_slerp.shape, 1), slerped)
 
     return out
+
+
+def convert_tensor(
+    x: Union[torch.Tensor, collections.Sequence, collections.Mapping, str, bytes],
+    device: Optional[Union[str, torch.device]] = None,
+    non_blocking: bool = False,
+) -> Union[torch.Tensor, collections.Sequence, collections.Mapping, str, bytes]:
+    """Move tensors to relevant device.
+    Args:
+        x: input tensor or mapping, or sequence of tensors.
+        device: device type to move ``x``.
+        non_blocking: convert a CPU Tensor with pinned memory to a CUDA Tensor
+            asynchronously with respect to the host if possible
+    """
+
+    def _func(tensor: torch.Tensor) -> torch.Tensor:
+        return tensor.to(device=device, non_blocking=non_blocking) if device is not None else tensor
+
+    return apply_to_tensor(x, _func)
+
+
+def apply_to_tensor(
+    x: Union[torch.Tensor, collections.Sequence, collections.Mapping, str, bytes], func: Callable
+) -> Union[torch.Tensor, collections.Sequence, collections.Mapping, str, bytes]:
+    """Apply a function on a tensor or mapping, or sequence of tensors.
+    Args:
+        x: input tensor or mapping, or sequence of tensors.
+        func: the function to apply on ``x``.
+    """
+    return apply_to_type(x, torch.Tensor, func)
+
+
+def apply_to_type(
+    x: Union[Any, collections.Sequence, collections.Mapping, str, bytes],
+    input_type: Union[type, tuple[type[Any], Any]],
+    func: Callable,
+) -> Union[Any, collections.Sequence, collections.Mapping, str, bytes]:
+    """Apply a function on an object of `input_type` or mapping, or sequence of objects of `input_type`.
+    Args:
+        x: object or mapping or sequence.
+        input_type: data type of ``x``.
+        func: the function to apply on ``x``.
+    """
+    if isinstance(x, input_type):
+        return func(x)
+    if isinstance(x, (str, bytes)):
+        return x
+    if isinstance(x, collections.Mapping):
+        return cast(Callable, type(x))({k: apply_to_type(sample, input_type, func) for k, sample in x.items()})
+    if isinstance(x, tuple) and hasattr(x, "_fields"):  # namedtuple
+        return cast(Callable, type(x))(*(apply_to_type(sample, input_type, func) for sample in x))
+    if isinstance(x, collections.Sequence):
+        return cast(Callable, type(x))([apply_to_type(sample, input_type, func) for sample in x])
+    raise TypeError(f"x must contain {input_type}, dicts or lists; found {type(x)}")

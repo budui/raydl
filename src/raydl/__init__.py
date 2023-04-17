@@ -10,7 +10,13 @@ from .image import (
 )
 from .initialization import full_class_name, import_object, initialize
 from .sfdb import KVSFDB, DataclassSFDB, JsonSFDB
-from .tensor import grid_transpose, slerp
+from .tensor import (
+    apply_to_tensor,
+    apply_to_type,
+    convert_tensor,
+    grid_transpose,
+    slerp,
+)
 from .time import Timer, running_timer
 from .utils import classname, manual_seed
 
