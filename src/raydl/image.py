@@ -88,9 +88,9 @@ def load_images(
 
 def captioning_pil_image(
     pil_image: Image.Image,
-    captions: Sequence[Union[str, tuple[str, str], None]],
-    grid_cell_size: tuple[int, int],
-    grid_cell_padding: int,
+    captions: Union[Sequence[Union[str, tuple[str, str], None]], str],
+    grid_cell_size: Optional[tuple[int, int]] = None,
+    grid_cell_padding: int = 0,
     caption_color: str = "#ff0000",
     caption_font=DEFAULT_FONT,
 ) -> Image.Image:
@@ -108,8 +108,16 @@ def captioning_pil_image(
         will find font as https://pillow.readthedocs.io/en/latest/reference/ImageFont.html#PIL.ImageFont.truetype
     :return:
     """
-    h, w = grid_cell_size
-    padding = grid_cell_padding
+    if isinstance(captions, str):
+        captions = [captions]
+
+    if grid_cell_size is None:
+        h, w = pil_image.height, pil_image.width
+        padding = 0
+    else:
+        h, w = grid_cell_size
+        padding = grid_cell_padding
+
     nrow = pil_image.width // w
     im_draw = ImageDraw.Draw(pil_image)
     try:
@@ -117,6 +125,7 @@ def captioning_pil_image(
     except OSError:
         warnings.warn(f"can not find {caption_font}, so use the default font, better than nothing")
         im_font = ImageFont.load_default()
+
     for i, cap in enumerate(captions):
         if cap is None:
             continue
@@ -154,7 +163,6 @@ def to_pil_images(
     caption_color: str = "#ff0000",
     caption_font=DEFAULT_FONT,
 ) -> Union[Image.Image, list[Image.Image]]:
-
     if isinstance(captions, bool):
         captions = list(map(str, range(len(images)))) if captions else None
 
