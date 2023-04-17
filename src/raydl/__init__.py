@@ -20,4 +20,4 @@ from .tensor import (
 from .time import Timer, running_timer
 from .utils import classname, manual_seed
 
-__version__ = "0.0.8"
+__version__ = "0.0.9"
