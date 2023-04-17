@@ -129,6 +129,12 @@ class _Database:
         self.__max_commit_waiting_time = 60
         self.__max_commit_waiting_updates = 1024 * 16
 
+    def __repr__(self) -> str:
+        return f"{raydl.full_class_name(self)}(_filename={self._filename})"
+
+    def enable_wal(self):
+        self._sqlite.execute("PRAGMA journal_mode=WAL")
+
     @property
     def is_close(self):
         return self._is_close
@@ -215,9 +221,8 @@ class DataclassSFDB(_Database):
         filename: str,
         schema_dataclass,
         type_mappers: Optional[dict[str, TypeMapper]] = None,
-        enable_mapper_guess=False,
+        enable_mapper_guess=True,
     ):
-
         assert dataclasses.is_dataclass(schema_dataclass) and isinstance(schema_dataclass, type)
 
         self.schema = schema_dataclass
