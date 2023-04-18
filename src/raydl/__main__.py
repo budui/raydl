@@ -40,7 +40,7 @@ def diff(path1, path2, save_path=None, adaptive=False):
             _path = path.parent / f"{path.stem}_diff{path.suffix}"
             print(f"{path} existed! rename save path to {_path}")
             path = _path
-        raydl.save_images(diff_heatmap, path)
+        raydl.save_images(diff_heatmap, path, value_range=(0, 1))
 
 
 def _infer_save_path(save_path, images_to_compare, batch_id, batch_size):
@@ -129,4 +129,9 @@ def concat(
 
 
 if __name__ == "__main__":
-    fire.Fire({"concat": concat})
+    fire.Fire(
+        dict(
+            concat=concat,
+            diff=diff,
+        )
+    )
