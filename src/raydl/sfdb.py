@@ -179,7 +179,7 @@ class _Database:
         return
 
     def close(self):
-        if self._sqlite is None or self._is_close:
+        if getattr(self, "_sqlite", None) is None or self._is_close:
             return
         self._sanity_check()
         self.commit()
@@ -395,7 +395,7 @@ def _create_db_in_the_fly(db_path, schema, type_mappers) -> Union[DataclassSFDB,
         if isinstance(type_mappers.get("value", None), JSONTypeMapper):
             return JsonSFDB(db_path)
         return KVSFDB(filename=db_path, value_type=type_mappers.get("value", None) or fields[0].type)
-    return DataclassSFDB(db_path, inferred_dataclass, type_mappers)
+    return DataclassSFDB(db_path, inferred_dataclass, type_mappers, enable_mapper_guess=False)
 
 
 def from_sqlite3(db_path, smart=True) -> Union[DataclassSFDB, KVSFDB, JsonSFDB]:
