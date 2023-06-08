@@ -35,7 +35,7 @@ class JSONTypeMapper(TypeMapper):
 
     @staticmethod
     def serialize(obj):
-        return json.dumps(obj)
+        return json.dumps(obj, allow_nan=False, ensure_ascii=False)
 
     @staticmethod
     def unserialize(val):
